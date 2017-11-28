@@ -18,9 +18,10 @@ import cv2
 # In the csv file there are the following fields:
 # Center image, left image, right image, steering angle, throttle, brake, speed
 importer = SimulatorDatasetImporter()
-importer.append_dataset('../traindata/driving_crazy/driving_log.csv', exclude_angles=[0.0])
-importer.append_dataset('../traindata/driving/driving_log.csv')
-importer.append_dataset('../traindata/driving_reverse/driving_log.csv')
+# Dont Train this crazy stuff !!
+# importer.append_dataset('../traindata/driving_crazy/driving_log.csv', exclude_angles=[0.0])
+importer.append_dataset('../traindata/driving/driving_log.csv', exclude_angles=[])
+importer.append_dataset('../traindata/driving_reverse/driving_log.csv', exclude_angles=[])
 importer.harmonize_angles()
 
 # Define the cropping positions
