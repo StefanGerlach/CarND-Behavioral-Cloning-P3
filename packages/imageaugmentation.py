@@ -13,6 +13,13 @@ class ImageAugmenter(object):
     def add_keras_augmenter(self, data_generator: ImageDataGenerator):
         self._keras_augmenter = data_generator
 
+    def add_gaussian_noise(self, prob=0.5, scale=25.5):
+        if self._sequential_augmentation is None:
+            self._sequential_augmentation = iaa.Sequential()
+
+        self._sequential_augmentation.add(iaa.Sometimes(prob,
+                                                        iaa.AdditiveGaussianNoise(scale=scale)))
+
     def add_simplex_noise(self, prob=0.5, multiplicator=0.7):
         if self._sequential_augmentation is None:
             self._sequential_augmentation = iaa.Sequential()

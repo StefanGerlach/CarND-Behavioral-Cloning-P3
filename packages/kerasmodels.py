@@ -5,9 +5,9 @@ from keras.layers import Input, Dropout,  AveragePooling2D, Dense,\
 from keras.engine import get_source_inputs
 
 
-def fire_module(x, filters):
+def fire_module(x, filters, dropout):
     x = BatchNormalization()(x)
-    x = Dropout(0.1)(x)
+    x = Dropout(dropout)(x)
 
     sq_filters, ex1_filters, ex2_filters = filters
     squeeze = Conv2D(sq_filters, (1, 1), activation='relu', padding='same')(x)
@@ -17,26 +17,26 @@ def fire_module(x, filters):
     return x
 
 
-def squeeze_net(nb_classes, input_shape, input_tensor=None):
+def squeeze_net(nb_classes, input_shape, dropout, input_tensor=None):
     model_input = Input(input_shape) if input_tensor is None else input_tensor
 
     x = BatchNormalization()(model_input)
     x = Conv2D(64, kernel_size=(3, 3), padding='same', activation='relu')(x)
     x = MaxPool2D()(x)
 
-    x = fire_module(x, (16, 64, 64))
-    x = fire_module(x, (16, 64, 64))
+    x = fire_module(x, (16, 64, 64), dropout)
+    x = fire_module(x, (16, 64, 64), dropout)
     x = MaxPool2D(pool_size=(2, 2))(x)
 
-    x = fire_module(x, (32, 128, 128))
-    x = fire_module(x, (32, 128, 128))
+    x = fire_module(x, (32, 128, 128), dropout)
+    x = fire_module(x, (32, 128, 128), dropout)
     x = MaxPool2D(pool_size=(2, 2))(x)
 
-    x = fire_module(x, (48, 192, 192))
-    x = fire_module(x, (48, 192, 192))
+    x = fire_module(x, (48, 192, 192), dropout)
+    x = fire_module(x, (48, 192, 192), dropout)
 
-    x = fire_module(x, (64, 256, 256))
-    x = fire_module(x, (64, 256, 256))
+    x = fire_module(x, (64, 256, 256), dropout)
+    x = fire_module(x, (64, 256, 256), dropout)
 
     x = Conv2D(192, kernel_size=(1, 1), activation='relu')(x)
 

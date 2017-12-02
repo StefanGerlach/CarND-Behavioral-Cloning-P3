@@ -1,5 +1,6 @@
 import numpy as np
 import keras.preprocessing.image as kgenerators
+import random
 
 
 class BatchGenerator(kgenerators.Iterator):
@@ -12,8 +13,7 @@ class BatchGenerator(kgenerators.Iterator):
                  image_shape,
                  augmentation_fn=None,
                  preprocessing_fn=None,
-                 extract_image_fn=None,
-                 extract_label_fn=None,
+                 extract_xy_fn=None,
                  shuffle=True,
                  seed=1337):
 
@@ -21,14 +21,10 @@ class BatchGenerator(kgenerators.Iterator):
         self._augmentation_fn = augmentation_fn
         self._preprocessing = preprocessing_fn
 
-        if extract_image_fn is None:
-            extract_image_fn = (lambda e: e.load_image())
+        if extract_xy_fn is None:
+            extract_xy_fn = (lambda e: e.load_image_and_label())
 
-        if extract_label_fn is None:
-            extract_label_fn = (lambda e: e.steering_angle)
-
-        self._extract_label_fn = extract_label_fn
-        self._extract_image_fn = extract_image_fn
+        self._extract_xy_fn = extract_xy_fn
 
         self._image_shape = image_shape
         self._batch_size = batch_size
@@ -36,26 +32,47 @@ class BatchGenerator(kgenerators.Iterator):
 
         super().__init__(n=len(dataset), batch_size=batch_size, shuffle=shuffle, seed=seed)
 
+    def custom_next(self):
+        """For python 2.x.
+
+        # Returns
+            The next batch.
+        """
+        # Keeps under lock only the mechanism which advances
+        # the indexing of each batch.
+        with self.lock:
+            index_array = next(self.index_generator)
+        # The transformation of images is not under thread lock
+        # so it can be done in parallel
+        return self._get_batches_of_transformed_samples(index_array)
+
     def _get_batches_of_transformed_samples(self, index_array):
 
-        batch_x_elements = np.take(self._x, index_array)
-        batch_y = [self._extract_label_fn(e) for e in batch_x_elements]
-        batch_x = np.zeros(shape=[len(index_array),
-                                  self._image_shape[0],
-                                  self._image_shape[1],
-                                  self._image_shape[2]])
+        elements = np.take(self._x, index_array)
+        batch_x = []
+        batch_y = []
 
         # Load images, preprocess and augment
-        for i in range(len(batch_x_elements)):
-            batch_x[i] = self._extract_image_fn(batch_x_elements[i])
+        for i in range(len(elements)):
 
-            # Do augmentation if function is set
-            if self._augmentation_fn is not None:
-                batch_x[i], batch_y[i] = self._augmentation_fn(batch_x[i], batch_y[i])
+            # Extract function may be a list. Choose 1 randomly
+            if isinstance(self._extract_xy_fn, list):
+                extract_fn = random.choice(self._extract_xy_fn)
+            else:
+                extract_fn = self._extract_xy_fn
+
+            image, target = extract_fn(elements[i])
 
             # Do preprocessing if function is set
             if self._preprocessing is not None:
-                batch_x[i] = self._preprocessing(batch_x[i])
+                image = self._preprocessing(image)
+
+            # Do augmentation if function is set
+            if self._augmentation_fn is not None:
+                image, target = self._augmentation_fn(image, target)
+
+            batch_x.append(image)
+            batch_y.append(target)
 
         assert len(batch_x) == len(batch_y)
         return np.array(batch_x, dtype=np.float32), np.array(batch_y, dtype=np.float32)

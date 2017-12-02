@@ -18,11 +18,14 @@ import cv2
 # In the csv file there are the following fields:
 # Center image, left image, right image, steering angle, throttle, brake, speed
 importer = SimulatorDatasetImporter()
-# Dont Train this crazy stuff !!
+importer_validation = SimulatorDatasetImporter()
+
 # importer.append_dataset('../traindata/driving_crazy/driving_log.csv', exclude_angles=[0.0])
 importer.append_dataset('../traindata/driving/driving_log.csv', exclude_angles=[])
 importer.append_dataset('../traindata/driving_reverse/driving_log.csv', exclude_angles=[])
 importer.harmonize_angles()
+
+importer_validation.append_dataset('../traindata/validation_drive/driving_log.csv', exclude_angles=[])
 
 # Define the cropping positions
 crop_top = 60
@@ -33,45 +36,70 @@ img = importer.dataset[0].load_combined_image()
 
 # Training hyperparameter
 batch_size = 64
-epochs = 50
+epochs = 30
 
 augmenter = ImageAugmenter()
 
-augmenter.add_coarse_dropout()
-augmenter.add_simplex_noise(multiplicator=0.2)
-augmenter.add_keras_augmenter(ImageDataGenerator(rotation_range=5.,
+augmenter.add_coarse_dropout(prob=0.2)
+augmenter.add_gaussian_noise(prob=0.2)
+augmenter.add_simplex_noise(prob=0.2, multiplicator=0.3)
+augmenter.add_keras_augmenter(ImageDataGenerator(rotation_range=10.,
                                                  width_shift_range=0.02,
                                                  height_shift_range=0.02,
                                                  zoom_range=0.05,
                                                  fill_mode='constant'))
 
-batch_gen = BatchGenerator(batch_size=batch_size, n_classes=1, dataset=importer.dataset,
-                           augmentation_fn=augmenter.augment, image_shape=img.shape)
+preprocessing = (lambda x: np.expand_dims(cv2.cvtColor(x, cv2.COLOR_RGB2GRAY), -1))
 
-callbacks = []
-callbacks.append(TensorBoard())
-callbacks.append(ModelCheckpoint(filepath="weights.{epoch:02d}-{loss:.2f}.hdf5", monitor='loss',
-                                 mode='min'))
+batch_gen = BatchGenerator(batch_size=batch_size,
+                           n_classes=1,
+                           extract_xy_fn=[(lambda e: e.load_image_and_label('center', np.random.randint(15, 30)/100.)),
+                                          (lambda e: e.load_image_and_label('left', np.random.randint(15, 30)/100.)),
+                                          (lambda e: e.load_image_and_label('right', np.random.randint(15, 30)/100.))],
+                           dataset=importer.dataset,
+                           augmentation_fn=augmenter.augment,
+                           preprocessing_fn=preprocessing,
+                           image_shape=img.shape)
 
+batch_gen_validation = BatchGenerator(batch_size=batch_size, n_classes=1, dataset=importer_validation.dataset,
+                                      preprocessing_fn=preprocessing,
+                                      image_shape=img.shape)
+
+img = batch_gen_validation.custom_next()[0][0]
+batch_gen_validation.reset()
+
+callbacks = [TensorBoard(),
+             ModelCheckpoint(filepath="weights.{epoch:02d}-{loss:.5f}.hdf5",
+                             monitor='loss',
+                             mode='min')]
 
 if False:
     for e in range(100):
-        imgs, y = batch_gen.next()
+        imgs, y = batch_gen.custom_next()
         for img in imgs:
             img = img[60: img.shape[0]-20]
             cv2.imshow('win', img.astype(np.uint8))
-            cv2.waitKey(100)
+            cv2.waitKey(200)
 
 in_layer = Input(shape=img.shape)
 in_layer = Cropping2D(cropping=((crop_top, crop_bottom), (0, 0)))(in_layer)
 in_layer = Lambda(lambda in_img: (in_img-128.) / 128.)(in_layer)
 
-x = squeeze_net(nb_classes=1, input_shape=None, input_tensor=in_layer)
+x = squeeze_net(nb_classes=1, input_shape=None, dropout=0.2, input_tensor=in_layer)
 x.summary()
 x.compile(optimizer=Adam(), loss='mse', metrics=['mae'])
 
 steps_per_epoch = int(np.ceil(len(importer.dataset) / batch_size))
+steps_per_epoch_val = int(np.ceil(len(importer_validation.dataset) / batch_size))
 print('Steps per Epoch: ', steps_per_epoch)
+print('Steps per Validation Epoch: ', steps_per_epoch_val)
 
-x.fit_generator(callbacks=callbacks, verbose=1, generator=batch_gen, steps_per_epoch=1, epochs=epochs, workers=8)
+x.fit_generator(callbacks=callbacks,
+                verbose=1,
+                generator=batch_gen,
+                steps_per_epoch=steps_per_epoch,
+                epochs=epochs,
+                validation_data=batch_gen_validation,
+                validation_steps=steps_per_epoch_val,
+                workers=8)
 x.save('trained_model.h5')
