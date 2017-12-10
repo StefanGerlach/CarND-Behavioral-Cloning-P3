@@ -44,8 +44,8 @@ class SimulatorDatasetImporter(object):
     def harmonize_angles(self,
                          epsilon=1e-1,
                          exclude_angles: list=None,
-                         exclude_less_than=5,
-                         center=True,
+                         exclude_less_than=None,
+                         center=False,
                          show_histogram=False):
 
         # collect all angles in a dictionary
