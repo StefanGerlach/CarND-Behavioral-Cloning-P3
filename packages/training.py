@@ -26,7 +26,7 @@ importer.append_dataset('../traindata/driving/driving_log.csv', exclude_angles=[
 importer.append_dataset('../traindata/driving_reverse/driving_log.csv', exclude_angles=[])
 importer.append_dataset('../traindata/driving_normal_datarun0/driving_log.csv', exclude_angles=[])
 
-importer.harmonize_angles(epsilon=1e-2, exclude_angles=[], show_histogram=False)
+importer.harmonize_angles(epsilon=1e-3, exclude_angles=[], show_histogram=False)
 
 importer_validation.append_dataset('../traindata/validation_drive/driving_log.csv', exclude_angles=[])
 importer.harmonize_angles(epsilon=1e-2, exclude_angles=[])
@@ -39,7 +39,7 @@ crop_bottom = 20
 img = importer.dataset[0].load_combined_image()
 
 # Training hyperparameter
-experiment_name = 'NvidiaNet_V1_Cont1'
+experiment_name = 'NvidiaNet_V2'
 
 batch_size = 256
 epochs = 20
@@ -80,23 +80,23 @@ log_dir = os.path.join('logs', experiment_name)
 if os.path.isdir(log_dir) is False:
     os.makedirs(log_dir)
 
-if True:
-    for e in range(100):
+if False:
+    for e in range(1):
         imgs, y = batch_gen.custom_next()
-        for img in imgs:
+        for j, img in enumerate(imgs):
             img = img[60: img.shape[0]-20]
-            cv2.imshow('win', img.astype(np.uint8))
-            cv2.imwrite('img_aug'+str(e)+'.png', img)
-            cv2.waitKey(200)
+            #cv2.imwrite('img_aug' + str(j) + '.png', img)
+            #cv2.imshow('win', img.astype(np.uint8))
+            #cv2.waitKey(200)
 
 in_layer = Input(shape=img.shape)
 in_layer = Cropping2D(cropping=((crop_top, crop_bottom), (0, 0)))(in_layer)
 in_layer = Lambda(lambda in_img: (in_img-128.) / 128.)(in_layer)
 
-filter_multiplicator=0.25
+filter_multiplicator = 0.25
 x = nvidia_net(nb_classes=1, filter_multiplicator=filter_multiplicator, input_shape=None, dropout=0.2, input_tensor=in_layer)
 x.summary()
-x.load_weights('NvidiaNet_V1_weights.01-0.00908.hdf5')
+#x.load_weights('NvidiaNet_V1_weights.01-0.00908.hdf5')
 x.compile(optimizer=Adam(), loss='mse', metrics=['mae'])
 
 experiment_name = experiment_name + 'filtermul' + str(filter_multiplicator)

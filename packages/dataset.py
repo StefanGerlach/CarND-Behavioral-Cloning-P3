@@ -66,24 +66,31 @@ class SimulatorDatasetImporter(object):
                 angles_dict.pop(angle_to_ex)
 
         # Exclude rare occurrences
+        to_pop = []
         if exclude_less_than is not None:
             for angle_k in angles_dict:
                 if len(angles_dict[angle_k]) < exclude_less_than:
-                    angles_dict.pop(angle_k)
+                    to_pop.append(angle_k)
+        for tp in to_pop:
+            angles_dict.pop(tp)
 
         # Center the steering angles
         if center is True:
-            max_angle = np.max([angles_dict.keys()])
-            min_angle = np.min([angles_dict.keys()])
+            max_angle = float(np.max([float(k) for k in angles_dict.keys()]))
+            min_angle = float(np.min([float(k) for k in angles_dict.keys()]))
 
             if abs(min_angle) > max_angle:
                 min_angle = -max_angle
             if max_angle > abs(min_angle):
                 max_angle = abs(min_angle)
 
+            to_pop = []
             for angle_k in angles_dict:
                 if angle_k > max_angle or angle_k < min_angle:
-                    angles_dict.pop(angle_k)
+                    to_pop.append(angle_k)
+
+            for tp in to_pop:
+                angles_dict.pop(tp)
 
         # Calc the maximum count of a rounded steering angle
         angle_max_count = np.max(np.array([len(angles_dict[k]) for k in angles_dict]))
