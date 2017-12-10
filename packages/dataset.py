@@ -4,6 +4,7 @@ import os
 import ntpath
 import numpy as np
 import random as rnd
+import matplotlib.pyplot as plt
 
 
 class SimulatorDatasetImporter(object):
@@ -38,7 +39,7 @@ class SimulatorDatasetImporter(object):
                                       float(row[6]))
                 self._dataset.append(datapoint)
 
-    def harmonize_angles(self, epsilon=1e-1, exclude_angles: list=None):
+    def harmonize_angles(self, epsilon=1e-1, exclude_angles: list=None, show_histogram=False):
         # collect all angles in a dictionary
         angles_dict = {}
         for element in self._dataset:
@@ -53,11 +54,14 @@ class SimulatorDatasetImporter(object):
             for angle_to_ex in exclude_angles:
                 angles_dict.pop(angle_to_ex)
 
+        if show_histogram:
+            self.visualize_dataset_frequencies(angles_dict, 'Non-normalized steering angles')
+
         # Calc the maximum count of a rounded steering angle
         angle_max_count = np.max(np.array([len(angles_dict[k]) for k in angles_dict]))
 
         # Now, fill up a new dictionary with indices
-        angles_dict_harmonize = angles_dict
+        angles_dict_harmonize = angles_dict.copy()
 
         for k in angles_dict_harmonize:
             needed_for_fill = angle_max_count - len(angles_dict[k])
@@ -69,5 +73,26 @@ class SimulatorDatasetImporter(object):
         for k in angles_dict_harmonize:
             for element in angles_dict_harmonize[k]:
                 self._dataset.append(element)
+
+        if show_histogram:
+            self.visualize_dataset_frequencies(angles_dict_harmonize, 'Normalized steering angles')
         # Done
         return
+
+    def visualize_dataset_frequencies(self, y, title: str):
+        # count the frequencies of classes in dataset and visualize
+        hist = {}
+
+        for label_id in sorted(y.keys()):
+            hist[label_id] = len(y[label_id])
+
+        # visualize as histogram
+        fig = plt.figure(figsize=(16, 12))
+        sub = fig.add_subplot(1, 1, 1)
+        sub.set_title(title)
+        y_data = np.array([float(hist[k]) for k in hist])
+        plt.bar(range(len(hist)), y_data, align='center')
+        x_axis = np.array([k for k in hist])
+        plt.xticks(range(len(hist)), x_axis, rotation='vertical', fontsize=8)
+        plt.subplots_adjust(bottom=0.4)
+        plt.show()

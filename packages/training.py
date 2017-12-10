@@ -26,7 +26,7 @@ importer.append_dataset('../traindata/driving/driving_log.csv', exclude_angles=[
 importer.append_dataset('../traindata/driving_reverse/driving_log.csv', exclude_angles=[])
 importer.append_dataset('../traindata/driving_normal_datarun0/driving_log.csv', exclude_angles=[])
 
-importer.harmonize_angles(epsilon=1e-2, exclude_angles=[])
+importer.harmonize_angles(epsilon=1e-2, exclude_angles=[], show_histogram=False)
 
 importer_validation.append_dataset('../traindata/validation_drive/driving_log.csv', exclude_angles=[])
 importer.harmonize_angles(epsilon=1e-2, exclude_angles=[])
@@ -41,7 +41,7 @@ img = importer.dataset[0].load_combined_image()
 # Training hyperparameter
 experiment_name = 'NvidiaNet_V1_Cont1'
 
-batch_size = 64
+batch_size = 256
 epochs = 20
 
 augmenter = ImageAugmenter()
@@ -114,5 +114,5 @@ x.fit_generator(callbacks=callbacks,
                 epochs=epochs,
                 validation_data=batch_gen_validation,
                 validation_steps=steps_per_epoch_val,
-                workers=32)
+                workers=8)
 x.save('trained_model.h5')
