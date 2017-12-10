@@ -47,8 +47,8 @@ epochs = 20
 augmenter = ImageAugmenter()
 
 augmenter.add_coarse_dropout()
-augmenter.add_gaussian_noise(scale=15)
-augmenter.add_simplex_noise(multiplicator=0.5)
+augmenter.add_gaussian_noise(prob=0.2, scale=50)
+augmenter.add_simplex_noise(prob=0.2, multiplicator=0.5)
 augmenter.add_keras_augmenter(ImageDataGenerator(rotation_range=5.,
                                                  width_shift_range=0.1,
                                                  height_shift_range=0.1,
@@ -79,28 +79,32 @@ batch_gen_validation.reset()
 log_dir = os.path.join('logs', experiment_name)
 if os.path.isdir(log_dir) is False:
     os.makedirs(log_dir)
-    
-callbacks = [TensorBoard(log_dir),
-             ModelCheckpoint(filepath=experiment_name+"_weights.{epoch:02d}-{val_loss:.5f}.hdf5",
-                             monitor='loss',
-                             mode='min')]
 
-if False:
+if True:
     for e in range(100):
         imgs, y = batch_gen.custom_next()
         for img in imgs:
             img = img[60: img.shape[0]-20]
             cv2.imshow('win', img.astype(np.uint8))
+            cv2.imwrite('img_aug'+str(e)+'.png', img)
             cv2.waitKey(200)
 
 in_layer = Input(shape=img.shape)
 in_layer = Cropping2D(cropping=((crop_top, crop_bottom), (0, 0)))(in_layer)
 in_layer = Lambda(lambda in_img: (in_img-128.) / 128.)(in_layer)
 
-x = nvidia_net(nb_classes=1, input_shape=None, dropout=0.2, input_tensor=in_layer)
+filter_multiplicator=0.25
+x = nvidia_net(nb_classes=1, filter_multiplicator=filter_multiplicator, input_shape=None, dropout=0.2, input_tensor=in_layer)
 x.summary()
 x.load_weights('NvidiaNet_V1_weights.01-0.00908.hdf5')
 x.compile(optimizer=Adam(), loss='mse', metrics=['mae'])
+
+experiment_name = experiment_name + 'filtermul' + str(filter_multiplicator)
+
+callbacks = [TensorBoard(log_dir),
+             ModelCheckpoint(filepath=experiment_name + "_weights.{epoch:02d}-{val_loss:.5f}.hdf5",
+                             monitor='loss',
+                             mode='min')]
 
 steps_per_epoch = int(np.ceil(len(importer.dataset) / batch_size))
 steps_per_epoch_val = int(np.ceil(len(importer_validation.dataset) / batch_size))

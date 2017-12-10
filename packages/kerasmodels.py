@@ -3,7 +3,7 @@ from keras.layers import Input, Dropout, Activation, AveragePooling2D, GlobalMax
     GlobalAveragePooling2D, BatchNormalization, Concatenate, Conv2D, Reshape, MaxPool2D
 
 from keras.engine import get_source_inputs
-
+import numpy as np
 
 def fire_module(x, filters, dropout):
     x = BatchNormalization()(x)
@@ -49,30 +49,30 @@ def squeeze_net(nb_classes, input_shape, dropout, input_tensor=None):
     return squeezenet
 
 
-def nvidia_net(nb_classes, input_shape, dropout, input_tensor=None):
+def nvidia_net(nb_classes, filter_multiplicator, input_shape, dropout, input_tensor=None):
     model_input = Input(input_shape) if input_tensor is None else input_tensor
 
-    x = Conv2D(24, kernel_size=(5, 5), padding='same')(model_input)
+    x = Conv2D(int(np.max([24*filter_multiplicator, 1])), kernel_size=(5, 5), padding='same')(model_input)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPool2D()(x)
 
-    x = Conv2D(36, kernel_size=(5, 5), padding='same')(x)
+    x = Conv2D(int(np.max([36*filter_multiplicator, 1])), kernel_size=(5, 5), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPool2D()(x)
 
-    x = Conv2D(48, kernel_size=(5, 5), padding='same')(x)
+    x = Conv2D(int(np.max([48*filter_multiplicator, 1])), kernel_size=(5, 5), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPool2D()(x)
 
-    x = Conv2D(64, kernel_size=(3, 3), padding='same')(x)
+    x = Conv2D(int(np.max([64*filter_multiplicator, 1])), kernel_size=(3, 3), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = MaxPool2D()(x)
 
-    x = Conv2D(64, kernel_size=(3, 3), padding='same')(x)
+    x = Conv2D(int(np.max([64*filter_multiplicator, 1])), kernel_size=(3, 3), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
 
