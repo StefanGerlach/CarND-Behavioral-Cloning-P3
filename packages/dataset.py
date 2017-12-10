@@ -38,7 +38,7 @@ class SimulatorDatasetImporter(object):
                                       float(row[6]))
                 self._dataset.append(datapoint)
 
-    def harmonize_angles(self, epsilon=1e-1):
+    def harmonize_angles(self, epsilon=1e-1, exclude_angles: list=None):
         # collect all angles in a dictionary
         angles_dict = {}
         for element in self._dataset:
@@ -47,6 +47,11 @@ class SimulatorDatasetImporter(object):
                 angles_dict[rounded] = []
             # building up the histogram
             angles_dict[rounded].append(element)
+
+        # Exclude some angles
+        if exclude_angles is not None:
+            for angle_to_ex in exclude_angles:
+                angles_dict.pop(angle_to_ex)
 
         # Calc the maximum count of a rounded steering angle
         angle_max_count = np.max(np.array([len(angles_dict[k]) for k in angles_dict]))

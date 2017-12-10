@@ -62,13 +62,17 @@ class Datapoint(object):
     def load_image_and_label(self, img_pos: str='center', steering_offset=0.2):
         image = self.load_image(img_pos)
         label = self.steering_angle
+        mirrorable = True
 
         if img_pos == 'left':
             label = label + steering_offset
+            mirrorable= False
+
         if img_pos == 'right':
             label = label - steering_offset
+            mirrorable = False
 
-        return image, label
+        return image, label, mirrorable
 
     def load_combined_image(self):
         img_left = self.load_image('left')

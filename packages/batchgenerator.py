@@ -61,7 +61,7 @@ class BatchGenerator(kgenerators.Iterator):
             else:
                 extract_fn = self._extract_xy_fn
 
-            image, target = extract_fn(elements[i])
+            image, target, mirrorable = extract_fn(elements[i])
 
             # Do preprocessing if function is set
             if self._preprocessing is not None:
@@ -69,7 +69,7 @@ class BatchGenerator(kgenerators.Iterator):
 
             # Do augmentation if function is set
             if self._augmentation_fn is not None:
-                image, target = self._augmentation_fn(image, target)
+                image, target = self._augmentation_fn(image, target, mirrorable)
 
             batch_x.append(image)
             batch_y.append(target)

@@ -5,7 +5,7 @@ This package contains all code needed for training on simulator datasets
 from packages.dataset import SimulatorDatasetImporter
 from packages.batchgenerator import BatchGenerator
 from packages.imageaugmentation import ImageAugmenter
-from packages.kerasmodels import squeeze_net
+from packages.kerasmodels import squeeze_net, nvidia_net
 
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras.preprocessing.image import ImageDataGenerator
@@ -14,18 +14,22 @@ from keras.optimizers import Adam, SGD
 
 import numpy as np
 import cv2
+import os
 
 # In the csv file there are the following fields:
 # Center image, left image, right image, steering angle, throttle, brake, speed
 importer = SimulatorDatasetImporter()
 importer_validation = SimulatorDatasetImporter()
 
-# importer.append_dataset('../traindata/driving_crazy/driving_log.csv', exclude_angles=[0.0])
+importer.append_dataset('../traindata/driving_crazy/driving_log.csv', exclude_angles=[0.0])
 importer.append_dataset('../traindata/driving/driving_log.csv', exclude_angles=[])
 importer.append_dataset('../traindata/driving_reverse/driving_log.csv', exclude_angles=[])
-importer.harmonize_angles()
+importer.append_dataset('../traindata/driving_normal_datarun0/driving_log.csv', exclude_angles=[])
+
+importer.harmonize_angles(epsilon=1e-2, exclude_angles=[])
 
 importer_validation.append_dataset('../traindata/validation_drive/driving_log.csv', exclude_angles=[])
+importer.harmonize_angles(epsilon=1e-2, exclude_angles=[])
 
 # Define the cropping positions
 crop_top = 60
@@ -35,41 +39,49 @@ crop_bottom = 20
 img = importer.dataset[0].load_combined_image()
 
 # Training hyperparameter
+experiment_name = 'NvidiaNet_V1_Cont1'
+
 batch_size = 64
-epochs = 30
+epochs = 20
 
 augmenter = ImageAugmenter()
 
-augmenter.add_coarse_dropout(prob=0.2)
-augmenter.add_gaussian_noise(prob=0.2)
-augmenter.add_simplex_noise(prob=0.2, multiplicator=0.3)
-augmenter.add_keras_augmenter(ImageDataGenerator(rotation_range=10.,
-                                                 width_shift_range=0.02,
-                                                 height_shift_range=0.02,
-                                                 zoom_range=0.05,
+augmenter.add_coarse_dropout()
+augmenter.add_gaussian_noise(scale=15)
+augmenter.add_simplex_noise(multiplicator=0.5)
+augmenter.add_keras_augmenter(ImageDataGenerator(rotation_range=5.,
+                                                 width_shift_range=0.1,
+                                                 height_shift_range=0.1,
+                                                 zoom_range=0.1,
                                                  fill_mode='constant'))
 
 preprocessing = (lambda x: np.expand_dims(cv2.cvtColor(x, cv2.COLOR_RGB2GRAY), -1))
 
 batch_gen = BatchGenerator(batch_size=batch_size,
                            n_classes=1,
-                           extract_xy_fn=[(lambda e: e.load_image_and_label('center', np.random.randint(15, 30)/100.)),
-                                          (lambda e: e.load_image_and_label('left', np.random.randint(15, 30)/100.)),
-                                          (lambda e: e.load_image_and_label('right', np.random.randint(15, 30)/100.))],
+                           extract_xy_fn=[(lambda e: e.load_image_and_label('center', np.random.randint(15, 25)/100.)),
+                                          (lambda e: e.load_image_and_label('left', np.random.randint(15, 25)/100.)),
+                                          (lambda e: e.load_image_and_label('right', np.random.randint(15, 25)/100.))
+                                          ],
                            dataset=importer.dataset,
                            augmentation_fn=augmenter.augment,
                            preprocessing_fn=preprocessing,
                            image_shape=img.shape)
 
-batch_gen_validation = BatchGenerator(batch_size=batch_size, n_classes=1, dataset=importer_validation.dataset,
+batch_gen_validation = BatchGenerator(batch_size=batch_size, n_classes=1,
+                                      dataset=importer_validation.dataset,
                                       preprocessing_fn=preprocessing,
                                       image_shape=img.shape)
 
 img = batch_gen_validation.custom_next()[0][0]
 batch_gen_validation.reset()
 
-callbacks = [TensorBoard(),
-             ModelCheckpoint(filepath="weights.{epoch:02d}-{loss:.5f}.hdf5",
+log_dir = os.path.join('logs', experiment_name)
+if os.path.isdir(log_dir) is False:
+    os.makedirs(log_dir)
+    
+callbacks = [TensorBoard(log_dir),
+             ModelCheckpoint(filepath=experiment_name+"_weights.{epoch:02d}-{val_loss:.5f}.hdf5",
                              monitor='loss',
                              mode='min')]
 
@@ -85,8 +97,9 @@ in_layer = Input(shape=img.shape)
 in_layer = Cropping2D(cropping=((crop_top, crop_bottom), (0, 0)))(in_layer)
 in_layer = Lambda(lambda in_img: (in_img-128.) / 128.)(in_layer)
 
-x = squeeze_net(nb_classes=1, input_shape=None, dropout=0.2, input_tensor=in_layer)
+x = nvidia_net(nb_classes=1, input_shape=None, dropout=0.2, input_tensor=in_layer)
 x.summary()
+x.load_weights('NvidiaNet_V1_weights.01-0.00908.hdf5')
 x.compile(optimizer=Adam(), loss='mse', metrics=['mae'])
 
 steps_per_epoch = int(np.ceil(len(importer.dataset) / batch_size))
@@ -101,5 +114,5 @@ x.fit_generator(callbacks=callbacks,
                 epochs=epochs,
                 validation_data=batch_gen_validation,
                 validation_steps=steps_per_epoch_val,
-                workers=8)
+                workers=32)
 x.save('trained_model.h5')

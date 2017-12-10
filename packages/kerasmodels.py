@@ -1,5 +1,5 @@
 from keras import models
-from keras.layers import Input, Dropout,  AveragePooling2D, Dense,\
+from keras.layers import Input, Dropout, Activation, AveragePooling2D, GlobalMaxPooling2D, Flatten, Dense,\
     GlobalAveragePooling2D, BatchNormalization, Concatenate, Conv2D, Reshape, MaxPool2D
 
 from keras.engine import get_source_inputs
@@ -32,11 +32,11 @@ def squeeze_net(nb_classes, input_shape, dropout, input_tensor=None):
     x = fire_module(x, (32, 128, 128), dropout)
     x = MaxPool2D(pool_size=(2, 2))(x)
 
-    x = fire_module(x, (48, 192, 192), dropout)
-    x = fire_module(x, (48, 192, 192), dropout)
+    # x = fire_module(x, (48, 192, 192), dropout)
+    # x = fire_module(x, (48, 192, 192), dropout)
 
-    x = fire_module(x, (64, 256, 256), dropout)
-    x = fire_module(x, (64, 256, 256), dropout)
+    # x = fire_module(x, (64, 256, 256), dropout)
+    # x = fire_module(x, (64, 256, 256), dropout)
 
     x = Conv2D(192, kernel_size=(1, 1), activation='relu')(x)
 
@@ -47,3 +47,48 @@ def squeeze_net(nb_classes, input_shape, dropout, input_tensor=None):
 
     squeezenet = models.Model(get_source_inputs(model_input), x)
     return squeezenet
+
+
+def nvidia_net(nb_classes, input_shape, dropout, input_tensor=None):
+    model_input = Input(input_shape) if input_tensor is None else input_tensor
+
+    x = Conv2D(24, kernel_size=(5, 5), padding='same')(model_input)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPool2D()(x)
+
+    x = Conv2D(36, kernel_size=(5, 5), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPool2D()(x)
+
+    x = Conv2D(48, kernel_size=(5, 5), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPool2D()(x)
+
+    x = Conv2D(64, kernel_size=(3, 3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPool2D()(x)
+
+    x = Conv2D(64, kernel_size=(3, 3), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+
+    x = GlobalMaxPooling2D()(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(100, activation='relu')(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(50, activation='relu')(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(10, activation='relu')(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(nb_classes)(x)
+
+    nvidia_net = models.Model(get_source_inputs(model_input), x)
+    return nvidia_net

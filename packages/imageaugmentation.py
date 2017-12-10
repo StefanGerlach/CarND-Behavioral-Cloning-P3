@@ -35,10 +35,10 @@ class ImageAugmenter(object):
         self._sequential_augmentation.add(iaa.Sometimes(prob,
                                                         iaa.CoarseDropout(p=0.1, size_percent=size_percentage)))
 
-    def augment(self, x, y):
+    def augment(self, x, y, mirrorable):
         # flipping is done here with resp flipped y
         rand_num = rnd.randint(0, 9)
-        if rand_num >= 5:
+        if rand_num >= 5 and mirrorable:
             x = np.flip(x, axis=1)
             y = -y
 
