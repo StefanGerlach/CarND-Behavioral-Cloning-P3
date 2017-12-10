@@ -29,7 +29,7 @@ importer.append_dataset('../traindata/driving_normal_datarun0/driving_log.csv', 
 importer.harmonize_angles(epsilon=1e-3, exclude_angles=[], show_histogram=False)
 
 importer_validation.append_dataset('../traindata/validation_drive/driving_log.csv', exclude_angles=[])
-importer.harmonize_angles(epsilon=1e-2, exclude_angles=[])
+importer.harmonize_angles(epsilon=1e-2, exclude_angles=[], show_histogram=False, exclude_less_than=None, center=False)
 
 # Define the cropping positions
 crop_top = 60
@@ -39,7 +39,7 @@ crop_bottom = 20
 img = importer.dataset[0].load_combined_image()
 
 # Training hyperparameter
-experiment_name = 'NvidiaNet_V2'
+experiment_name = 'NvidiaNet_V2_BS256_Cont1'
 
 batch_size = 256
 epochs = 20
@@ -47,11 +47,11 @@ epochs = 20
 augmenter = ImageAugmenter()
 
 augmenter.add_coarse_dropout()
-augmenter.add_gaussian_noise(prob=0.2, scale=50)
-augmenter.add_simplex_noise(prob=0.2, multiplicator=0.5)
+augmenter.add_gaussian_noise(prob=0.3, scale=50)
+augmenter.add_simplex_noise(prob=0.3, multiplicator=0.5)
 augmenter.add_keras_augmenter(ImageDataGenerator(rotation_range=5.,
-                                                 width_shift_range=0.1,
-                                                 height_shift_range=0.1,
+                                                 width_shift_range=0.05,
+                                                 height_shift_range=0.05,
                                                  zoom_range=0.1,
                                                  fill_mode='constant'))
 
@@ -96,7 +96,7 @@ in_layer = Lambda(lambda in_img: (in_img-128.) / 128.)(in_layer)
 filter_multiplicator = 0.25
 x = nvidia_net(nb_classes=1, filter_multiplicator=filter_multiplicator, input_shape=None, dropout=0.2, input_tensor=in_layer)
 x.summary()
-#x.load_weights('NvidiaNet_V1_weights.01-0.00908.hdf5')
+x.load_weights('NvidiaNet_V2_BS512filtermul0.25_weights.01-0.00705.hdf5')
 x.compile(optimizer=Adam(), loss='mse', metrics=['mae'])
 
 experiment_name = experiment_name + 'filtermul' + str(filter_multiplicator)
