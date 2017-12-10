@@ -5,7 +5,7 @@
 ![Simulator Screenshot](/documentation/splash.png)
 
 Overview
-
+---
 
 This repository contains my solution of the Udacity Self Driving Car Nanodegree Behavioral Cloning Project. The target of this project is to create a Deep Learning Model that autonomously can drive the tracks in the simulator application. 
 
