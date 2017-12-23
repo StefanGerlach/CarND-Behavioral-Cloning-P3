@@ -38,7 +38,7 @@ The simulator can record images and meta data like speed, throttle and steering 
 [image12]: ./documentation/imgaug_4.png "Image Augment 4"
 [image13]: ./documentation/imgaug_5.png "Image Augment 5"
 [image14]: ./documentation/monitoring.png "Tensorboard"
-
+[image15]: ./documentation/youtube.png "YT Link"
 
 Files Submitted
 ---
@@ -168,6 +168,8 @@ Results and autonomous driving in simulator
 ---
 
 To visualize my result on track 1, [I uploaded a video of the autonomous drive on Youtube](https://youtu.be/r9HVnz7Q2AU). There a picture-in-picture visualizes the images that are fed to the neural network.
+
+[![Thumbnail][image15]](https://youtu.be/r9HVnz7Q2AU "Video Title")
 
 The model is able to drive safely through the course without leaving the track. When the speed is set too high, there seems to be some lag in the prediction and the car begins to oscillate a litte bit (at speed 30), so I set the speed to 20. 
 
