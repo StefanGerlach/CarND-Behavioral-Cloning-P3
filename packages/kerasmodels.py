@@ -1,6 +1,6 @@
 from keras import models
 from keras.layers import Input, Dropout, Activation, AveragePooling2D, GlobalMaxPooling2D, Flatten, Dense,\
-    GlobalAveragePooling2D, BatchNormalization, Concatenate, Conv2D, Reshape, MaxPool2D
+    GlobalAveragePooling2D, BatchNormalization, Concatenate, Conv2D, Reshape, MaxPool2D, SeparableConv2D
 
 from keras.engine import get_source_inputs
 import numpy as np
@@ -17,6 +17,7 @@ def fire_module(x, filters, dropout):
     return x
 
 
+# https://arxiv.org/abs/1602.07360
 def squeeze_net(nb_classes, input_shape, dropout, input_tensor=None):
     model_input = Input(input_shape) if input_tensor is None else input_tensor
 
@@ -32,18 +33,18 @@ def squeeze_net(nb_classes, input_shape, dropout, input_tensor=None):
     x = fire_module(x, (32, 128, 128), dropout)
     x = MaxPool2D(pool_size=(2, 2))(x)
 
-    # x = fire_module(x, (48, 192, 192), dropout)
-    # x = fire_module(x, (48, 192, 192), dropout)
+    x = fire_module(x, (48, 192, 192), dropout)
+    x = fire_module(x, (48, 192, 192), dropout)
 
-    # x = fire_module(x, (64, 256, 256), dropout)
-    # x = fire_module(x, (64, 256, 256), dropout)
+    x = fire_module(x, (64, 256, 256), dropout)
+    x = fire_module(x, (64, 256, 256), dropout)
 
     x = Conv2D(192, kernel_size=(1, 1), activation='relu')(x)
 
     x = GlobalAveragePooling2D()(x)
 
     x = Dense(32, activation='relu')(x)
-    x = Dense(nb_classes)(x)
+    x = Dense(nb_classes, activation='sigmoid')(x)
 
     squeezenet = models.Model(get_source_inputs(model_input), x)
     return squeezenet
@@ -92,3 +93,77 @@ def nvidia_net(nb_classes, filter_multiplicator, input_shape, dropout, input_ten
 
     nvidia_net = models.Model(get_source_inputs(model_input), x)
     return nvidia_net
+
+
+# https://arxiv.org/abs/1704.04861
+def mobile_net(nb_classes, filter_multiplicator, input_shape, dropout, input_tensor=None):
+    model_input = Input(input_shape) if input_tensor is None else input_tensor
+
+    # 1. Standard Convolution 2D strides = 2, 2
+    x = Conv2D(int(np.max([32*filter_multiplicator, 1])),
+               kernel_size=(3, 3),
+               strides=(2, 2),
+               activation='relu',
+               padding='same')(model_input)
+    x = BatchNormalization()(x)
+
+    # 2. Depthwise separable convolution
+    x = SeparableConv2D(int(np.max([64*filter_multiplicator, 1])),
+                        kernel_size=(3, 3),
+                        activation='relu',
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+
+    # 3. Depthwise separable convolution strides = 2, 2
+    x = SeparableConv2D(int(np.max([128 * filter_multiplicator, 1])),
+                        kernel_size=(3, 3),
+                        strides=(2, 2),
+                        activation='relu',
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+
+    # 4. Depthwise separable convolution strides = 1, 1
+    x = SeparableConv2D(int(np.max([128 * filter_multiplicator, 1])),
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        activation='relu',
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+
+    # 5. Depthwise separable convolution strides = 2, 2
+    x = SeparableConv2D(int(np.max([256 * filter_multiplicator, 1])),
+                        kernel_size=(3, 3),
+                        strides=(2, 2),
+                        activation='relu',
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+
+    # 6. Depthwise separable convolution strides = 1, 1
+    x = SeparableConv2D(int(np.max([256 * filter_multiplicator, 1])),
+                        kernel_size=(3, 3),
+                        strides=(1, 1),
+                        activation='relu',
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+
+    # 7. Depthwise separable convolution strides = 2, 2
+    x = SeparableConv2D(int(np.max([512 * filter_multiplicator, 1])),
+                        kernel_size=(3, 3),
+                        strides=(2, 2),
+                        activation='relu',
+                        padding='same')(x)
+    x = BatchNormalization()(x)
+
+    x = GlobalMaxPooling2D()(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(128, activation='relu')(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(32, activation='relu')(x)
+    x = Dropout(dropout)(x)
+
+    x = Dense(nb_classes, activation='sigmoid')(x)
+
+    mobilenet = models.Model(get_source_inputs(model_input), x)
+    return mobilenet

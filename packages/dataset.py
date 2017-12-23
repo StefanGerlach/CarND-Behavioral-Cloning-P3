@@ -45,6 +45,7 @@ class SimulatorDatasetImporter(object):
                          epsilon=1e-1,
                          exclude_angles: list=None,
                          exclude_less_than=None,
+                         random_sample_max_to=None,
                          center=False,
                          show_histogram=False):
 
@@ -59,6 +60,14 @@ class SimulatorDatasetImporter(object):
 
         if show_histogram:
             self.visualize_dataset_frequencies(angles_dict, 'Non-normalized steering angles')
+
+        # Random sample the maximum to x
+        if random_sample_max_to is not None:
+            max_entries_key = sorted([(k, len(angles_dict[k])) for k in angles_dict],
+                                     key=lambda x: x[1],
+                                     reverse=True)[0][0]
+            rnd.shuffle(angles_dict[max_entries_key])
+            angles_dict[max_entries_key] = angles_dict[max_entries_key][:random_sample_max_to]
 
         # Exclude some angles
         if exclude_angles is not None:

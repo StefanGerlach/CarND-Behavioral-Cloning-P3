@@ -20,6 +20,18 @@ class ImageAugmenter(object):
         self._sequential_augmentation.add(iaa.Sometimes(prob,
                                                         iaa.AdditiveGaussianNoise(scale=scale)))
 
+    def add_median(self, prob=0.5, k=5):
+        if self._sequential_augmentation is None:
+            self._sequential_augmentation = iaa.Sequential()
+
+        self._sequential_augmentation.add(iaa.Sometimes(prob, iaa.MedianBlur(k=k)))
+
+    def add_invert(self, prob=0.5):
+        if self._sequential_augmentation is None:
+            self._sequential_augmentation = iaa.Sequential()
+
+        self._sequential_augmentation.add(iaa.Sometimes(prob, iaa.Invert(p=1.0)))
+
     def add_simplex_noise(self, prob=0.5, multiplicator=0.7):
         if self._sequential_augmentation is None:
             self._sequential_augmentation = iaa.Sequential()
