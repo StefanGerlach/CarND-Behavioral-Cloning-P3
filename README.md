@@ -152,7 +152,7 @@ This was not the case for my SqueezeNet and MobileNet-Like implementations. Beca
 
 ### Training Strategy
 
-To train the deep learning model, I created a *BatchGenerator* that is derived from the keras Iterator class. The function *_get_batches_of_transformed_samples* implements the former *next* method that returns a random batch of preprocessed and augmented images. The BatchGenerator will return a batch of n_b elements where it is random, whether the image from the left, right or center -camera is taken. If a frame from the left or right camera is choosen, the respective steering angle is corrected by a random offset within the intervall of 0.2 and 0.3.
+To train the deep learning model, I created a **BatchGenerator** that is derived from the keras Iterator class. The function **_get_batches_of_transformed_samples** implements the former **next** method that returns a random batch of preprocessed and augmented images. The BatchGenerator will return a batch of n_b elements where it is random, whether the image from the left, right or center -camera is taken. If a frame from the left or right camera is choosen, the respective steering angle is corrected by a random offset within the intervall of 0.2 and 0.3.
 
 I used a batchsize of 32 - chosen empirically. 
 The Adam-Optimizer adjusts the learning rate in an adaptive way. It is used to optimized a mean squared error - loss function. As a monitoring metric I used mean absolute error. Using the fit_generator-method of keras starts the optimizer loop.
