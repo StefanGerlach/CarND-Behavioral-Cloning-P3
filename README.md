@@ -33,37 +33,33 @@ The simulator can record images and meta data like speed, throttle and steering 
 [image7]: ./examples/placeholder_small.png "Flipped Image"
 
 
-Files Submitted & Code Quality
+Files Submitted
 ---
 
-#### 1. Submission includes all required files and can be used to run the simulator in autonomous mode
+#### 1. Submission includes the following files:
 
-My project includes the following files:
-* model.py containing the script to create and train the model
-* drive.py for driving the car in autonomous mode
-* model.h5 containing a trained convolution neural network 
-* writeup_report.md or writeup_report.pdf summarizing the results
+* packages/training.py containing the complete pipeline to train a deep learning model
+* packages/kerasmodels.py containing the definition of the keras models
+* packages/dataset.py for in-memory representation of a training/validation dataset
+* packages/datapoint.py for a single 'snapshot' of the 3 camera images plus meta data
+* packages/batchgenerator.py for training batchwise with image preprocessing and augmentation
+* packages/imageaugmentation.py for extended image augmentation
 
-#### 2. Submission includes functional code
-Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track by executing 
-```sh
-python drive.py model.h5
-```
+* video.py create a video from frames
+* drive.py for driving in autonomous mode in the simulator
 
-#### 3. Submission code is usable and readable
-
-The model.py file contains the code for training and saving the convolution neural network. The file shows the pipeline I used for training and validating the model, and it contains comments to explain how the code works.
+* model.h5 containing a trained convolution neural network
 
 
 Collection of training data from the simulator
 ---
 
-I used the simulator to create my training dataset and a separate validation and test dataset. For this purpose I did drive three laps of the course in the starting direction and three laps in the opposite direction. Driving the course I tried to keep the center of the track, smooth steering with the mouse and avoid zero-angles. In my point of view, controlling the car with keyboard would have let to mostly 0.0 angles and sharp and high steering angles when hitting the A or D keys. I tried to avoid that.
+I used the simulator to create my training dataset and a separate validation dataset. For this purpose I did drive one lap of the track 1 and track 2 in both directions. Driving the course I tried to keep the center of the track, smooth steering with the mouse and avoid zero-angles. In my point of view, controlling the car with keyboard would have let to mostly 0.0 angles and sharp and high steering angles when hitting the A or D keys. I tried to avoid that. 
 
 
 #### Train to avoid the track border
 
-To let the model learn how to avoid the border of the track I created a small training set that I added to the initial one. In this new training set I did only steer the car to get back on a driving direction that will lead to the track center. In all other situations I let the steering angle be 0.0. When loading the training set I excluded all samples with a steering angle of 0.0. So all samples in the set are situations, where I used the control to get a driving direction back to the center of the track.
+To let the model learn how to avoid the border of the track I created a small training set that I added to the initial one. In this new training set I did only steer the car to get back on a driving direction that will lead to the track center (wavy line driving). In all other situations I let the steering angle be 0.0. When loading the training set I excluded all samples with a steering angle of 0.0. So all samples in the set are situations, where I used the control to get a driving direction back to the center of the track.
 
 ![RecoverCenter][image3]
 
@@ -77,13 +73,49 @@ For loading the simulator output into the python program I wrote the class **Sim
 ![AnglesHistograms][image4]
 
 
-### Model Architecture and Training Strategy
+Model Architecture and Training Strategy
+---
 
-#### 1. An appropriate model architecture has been employed
+In this context I decided to use different architectures that are computational efficient. I was inspired by [MobileNet](https://arxiv.org/abs/1704.04861), [SqueezeNet](https://arxiv.org/abs/1602.07360) and the architecture in this [NVIDIA Blogpost](https://devblogs.nvidia.com/parallelforall/deep-learning-self-driving-cars/). For my final result I decided for the NVIDIA-inspired model with the following architecture:
 
-My model consists of a convolution neural network with 3x3 filter sizes and depths between 32 and 128 (model.py lines 18-24) 
+| Layer | Description | Output Shape (Height x Width x Channels) |
+| :---: | :---------: | :----------: |
+| 0 | input | 160 x 320 x 1 |
+| 1 | cropping2d | 80 x 320 x 1 | 
+| 2 | lambda (x: (x-128.0) / 128.0 | 80 x 320 x 1 |
+| 3 | Conv2D 5x5 same-padding | 80 x 320 x 24 |
+| 4 | BN + ReLU | 80 x 320 x 24 |
+| 5 | maxpool 2x2 | 40 x 160 x 24 |
+| 6 | Conv2D 5x5 same-padding | 40 x 160 x 36 |
+| 7 | BN + ReLU | 40 x 160 x 36 |
+| 8 | maxpool 2x2 | 20 x 80 x 36 |
+| 9 | Conv2D 5x5 same-padding | 20 x 80 x 48 |
+| 10 | BN + ReLU | 20 x 80 x 48 |
+| 11 | maxpool 2x2 | 10 x 40 x 48 |
+| 12 | Conv2D 3x3 same-padding | 10 x 40 x 64 |
+| 13 | BN + ReLU | 20 x 80 x 64 |
+| 14 | maxpool 2x2 | 10 x 40 x 64 |
+| 15 | Conv2D 5x5 same-padding | 10 x 40 x 64 |
+| 16 | BN + ReLU | 10 x 40 x 64 |
+| 17 | maxpool 2x2 | 5 x 20 x 64 |
+| 18 | global maxpool | 64 |
+| 19 | dropout | 64 |
+| 20 | dense + ReLu | 100 |
+| 21 | dropout | 100 |
+| 22 | dense + ReLu | 50 |
+| 23 | dropout | 50 |
+| 22 | dense + ReLu | 10 |
+| 23 | dropout | 10 |
+| 24 | dense + Sigmoid | 1 |
 
-The model includes RELU layers to introduce nonlinearity (code line 20), and the data is normalized in the model using a Keras lambda layer (code line 18). 
+
+The model contains regularization by dropout and batchnormalization. I left out weight decay because the model then did not perform like without weight decay. The activations (non-linearities) are Rectified Linear Units. The last output has a Sigmoid activtion to predict the steering angle. 
+
+Since this model is quite small and simple, it was nicely trainable on my GTX 1070 within about 1 hour. 
+
+This was not the case for my SqueezeNet and MobileNet-Like implementations. Because these implementations design a much deeper network, these models have **overfitted** very fast. The validation-loss increased after a really short time of training (some epochs).
+
+
 
 #### 2. Attempts to reduce overfitting in the model
 
