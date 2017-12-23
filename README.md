@@ -167,3 +167,19 @@ For monitoring the training process I used a keras tensorboard -callback.
 Results and autonomous driving in simulator
 ---
 
+To visualize my result on track 1, [I uploaded a video of the autonomous drive on Youtube](https://youtu.be/r9HVnz7Q2AU). There a picture-in-picture visualizes the images that are fed to the neural network.
+
+The model is able to drive safely through the course without leaving the track. When the speed is set too high, there seems to be some lag in the prediction and the car begins to oscillate a litte bit (at speed 30), so I set the speed to 20. 
+
+
+### Reflection and Problems
+
+* The initial experiments seemed to overfit very very fast on this dataset. Even with aggressive augmentation, the models could not generalize enough to drive on track 2, too. I first tried to learn only on track 1 and test on track 2. For this purpose, I tried a lot of augmentation (median filtering, inverting the image) - to force the model to only learn to detect the edges of the track. But this did not work.
+
+* So, the initial experiments had too much parameters (too large models)
+
+* Too much augmentation broke the training
+
+* Reinforcement Learning may be a better strategy to solve this problem
+
+
