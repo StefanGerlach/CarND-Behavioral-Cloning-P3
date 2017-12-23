@@ -115,9 +115,7 @@ filter_multiplicator = 1
 x = nvidia_net(nb_classes=1, filter_multiplicator=filter_multiplicator, input_shape=None, dropout=0.2, input_tensor=in_layer)
 # x = squeeze_net(nb_classes=1, input_shape=None, dropout=0.2, input_tensor=in_layer)
 # x = mobile_net(nb_classes=1, filter_multiplicator=filter_multiplicator, input_shape=None, dropout=0.2, input_tensor=in_layer)
-
 x.summary()
-#x.load_weights('../NvidiaNet_V6_BS256_ExtremeAugfiltermul0.25_weights.01-0.00797.hdf5')
 
 x.compile(optimizer=Adam(), loss='mse', metrics=['mae'])
 
